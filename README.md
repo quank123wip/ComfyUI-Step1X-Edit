@@ -26,7 +26,7 @@ pip install -r requirements.txt
 
 Download the safetensors weight of the pretrained model from [here](https://huggingface.co/stepfun-ai/Step1X-Edit), and then place them in `models/Step1x-Edit` (both the vae and model itself).
 
-Download the vision encoder(Qwen/Qwen2.5-VL-7B-Instruct) weight from [here], and place the whole folder inside `models/MLLM`.
+Download the vision encoder(Qwen/Qwen2.5-VL-7B-Instruct) weight from [here](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct), and place the whole folder inside `models/MLLM`.
 
 ## Citation
 
