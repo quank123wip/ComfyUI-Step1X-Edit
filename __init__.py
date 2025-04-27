@@ -1,4 +1,4 @@
-from step1xeditnode import Step1XEditNode
+from .step1xeditnode import Step1XEditNode
 
 NODE_CLASS_MAPPINGS = {
     "Step-1XEditNode": Step1XEditNode
