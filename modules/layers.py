@@ -455,7 +455,7 @@ class RMSNorm(torch.nn.Module):
         return (x * rrms).to(dtype=x_dtype) * weight
 
     def forward(self, x: Tensor):
-        return self.rms_norm_fast(x, self.scale, 1e-6)
+        return self.rms_norm_fast(x, self.scale.to(x.dtype), 1e-6)
 
 
 class QKNorm(torch.nn.Module):
