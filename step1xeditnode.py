@@ -124,11 +124,11 @@ class ImageGenerator:
         )
         if not quantized:
              self.dit = self.dit.to(dtype=torch.bfloat16)
-         if not offload:
+        if not offload:
              self.dit = self.dit.to(device=self.device)
              self.ae = self.ae.to(device=self.device)
-         self.quantized = quantized 
-         self.offload = offload
+        self.quantized = quantized
+        self.offload = offload
         
     def prepare(self, prompt, img, ref_image, ref_image_raw):
         bs, _, h, w = img.shape
@@ -163,8 +163,8 @@ class ImageGenerator:
             prompt = [prompt]
         if self.offload:
              self.llm_encoder = self.llm_encoder.to(self.device)
-         txt, mask = self.llm_encoder(prompt, ref_image_raw)
-         if self.offload:
+        txt, mask = self.llm_encoder(prompt, ref_image_raw)
+        if self.offload:
              self.llm_encoder = self.llm_encoder.cpu()
              cudagc()
 
@@ -334,8 +334,8 @@ class ImageGenerator:
         ref_images_raw = ref_images_raw.to(self.device)
         if self.offload:
              self.ae = self.ae.to(self.device)
-         ref_images = self.ae.encode(ref_images_raw.to(self.device) * 2 - 1)
-         if self.offload:
+        ref_images = self.ae.encode(ref_images_raw.to(self.device) * 2 - 1)
+        if self.offload:
              self.ae = self.ae.cpu()
              cudagc()
 
@@ -350,8 +350,8 @@ class ImageGenerator:
             init_image = torch.nn.functional.interpolate(init_image, (height, width))
             if self.offload:
                  self.ae = self.ae.to(self.device)
-             init_image = self.ae.encode(init_image.to() * 2 - 1)
-             if self.offload:
+            init_image = self.ae.encode(init_image.to() * 2 - 1)
+            if self.offload:
                  self.ae = self.ae.cpu()
                  cudagc()
         
@@ -388,11 +388,11 @@ class ImageGenerator:
                  show_progress=show_progress,
                  timesteps_truncate=1.0,
              )
-             x = self.unpack(x.float(), height, width)
-             if self.offload:
+            x = self.unpack(x.float(), height, width)
+            if self.offload:
                  self.ae = self.ae.to(self.device)
-             x = self.ae.decode(x)
-             if self.offload:
+            x = self.ae.decode(x)
+            if self.offload:
                  self.ae = self.ae.cpu()
                  cudagc()
             x = x.clamp(-1, 1)
