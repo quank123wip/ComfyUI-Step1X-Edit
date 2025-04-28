@@ -479,7 +479,7 @@ class Qwen2Connector(torch.nn.Module):
         mask_float = mask.unsqueeze(-1)  # [b, s1, 1]
         x_mean = (x * mask_float).sum(
                 dim=1
-            ) / mask_float.sum(dim=1) * (1 + self.scale_factor)
+            ) / mask_float.sum(dim=1) * (1 + self.scale_factor.to(x.dtype))
 
         global_out=self.global_proj_out(x_mean)
         encoder_hidden_states = self.S(x,t,mask)
