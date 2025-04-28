@@ -429,4 +429,4 @@ class Step1XEditNode:
             size_level=size_level,
         )[0] # This is a PIL Image, but you need a resized tensor as an output. Can we optimize function? Absolutely yes but not now.
         
-        return ToTensor(image);
+        return image;
