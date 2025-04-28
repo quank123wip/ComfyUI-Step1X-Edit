@@ -426,7 +426,7 @@ class Step1XEditNode:
         image_edit = ImageGenerator(
             ae_path=step1x_edit_model_vae,
             dit_path=step1x_edit_model,
-            qwen2vl_model_path=mllm_model,
+            qwen2vl_model_path=os.path.join(folder_paths.get_folder_paths("MLLM")[0], mllm_model),
             max_length=640,
         )
         
