@@ -18,7 +18,7 @@ from torchvision.transforms import functional as F
 from torchvision.transforms import ToTensor
 from tqdm import tqdm 
 
-import .sampling
+from . import sampling
 from .modules.autoencoder import AutoEncoder
 from .modules.conditioner import Qwen25VL_7b_Embedder as Qwen2VLEmbedder
 from .modules.model_edit import Step1XParams, Step1XEdit
