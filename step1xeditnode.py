@@ -18,7 +18,7 @@ from torchvision.transforms import functional as F
 from torchvision.transforms import ToTensor
 from tqdm import tqdm 
 
-import .sampling
+from . import sampling
 from .modules.autoencoder import AutoEncoder
 from .modules.conditioner import Qwen25VL_7b_Embedder as Qwen2VLEmbedder
 from .modules.model_edit import Step1XParams, Step1XEdit
@@ -466,4 +466,4 @@ class Step1XEditNode:
             size_level=size_level,
         )[0] # This is a PIL Image, but you need a resized tensor as an output. Can we optimize function? Absolutely yes but not now.
         
-        return ToTensor(image);
+        return image;
