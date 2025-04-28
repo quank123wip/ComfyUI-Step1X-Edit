@@ -437,8 +437,8 @@ class Step1XEditNode:
                 "step1x_edit_model":(folder_paths.get_filename_list("Step1x-Edit"),),
                 "step1x_edit_model_vae": (folder_paths.get_filename_list("Step1x-Edit"),),
                 "mllm_model": (folder_paths.get_filename_list("MLLM"),),
-                "offload": ("BOOLEAN", {"default": False, "tooltip": "Use offload for large models"}),
-                "quantized": ("BOOLEAN", {"default": False, "tooltip": "Use fp8 model weights"}),
+                "offload": ("BOOL", {"default": False, "tooltip": "Use offload for large models"}),
+                "quantized": ("BOOL", {"default": False, "tooltip": "Use fp8 model weights"}),
             }
         }
     
