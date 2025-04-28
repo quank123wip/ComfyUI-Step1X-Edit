@@ -29,7 +29,7 @@ import folder_paths
 
 def load_state_dict(model, ckpt_path, device="cuda", strict=False, assign=True):
     if Path(ckpt_path).suffix == ".safetensors":
-        state_dict = load_file(ckpt_path, device)
+        state_dict = load_file(os.path.join(folder_paths.models_dir, 'Step1x-Edit', ckpt_path), device)
     else:
         state_dict = torch.load(ckpt_path, map_location="cpu")
 
@@ -49,6 +49,7 @@ def load_state_dict(model, ckpt_path, device="cuda", strict=False, assign=True):
 
 def load_models(
     dit_path=None,
+    ae_path=None,
     qwen2vl_model_path=None,
     device="cuda",
     max_length=256,
@@ -111,8 +112,9 @@ class ImageGenerator:
         dtype=torch.bfloat16,
     ) -> None:
         self.device = torch.device(device)
-        self.dit, self.llm_encoder = load_models(
+        self.ae, self.dit, self.llm_encoder = load_models(
             dit_path=dit_path,
+            ae_path=ae_path,
             qwen2vl_model_path=qwen2vl_model_path,
             max_length=max_length,
             dtype=dtype,
@@ -246,6 +248,15 @@ class ImageGenerator:
             ph=2,
             pw=2,
         )
+    
+    @staticmethod
+    def tensor2pil(image):
+        return Image.fromarray(np.clip(255. * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8))
+    
+    # PIL to Tensor
+    @staticmethod
+    def pil2tensor(image):
+        return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
 
     @staticmethod
     def load_image(image):
@@ -274,6 +285,7 @@ class ImageGenerator:
     
     def input_process_image(self, img, img_size=512):
         # 1. 打开图片
+        img = self.tensor2pil(img)
         w, h = img.size
         r = w / h 
 
@@ -365,10 +377,11 @@ class ImageGenerator:
 
         t1 = time.perf_counter()
         print(f"Done in {t1 - t0:.1f}s.")
-        images_list = []
         for img in x.float():
-            images_list.append(self.output_process_image(F.to_pil_image(img), img_info)) 
-        return images_list
+            image = self.output_process_image(F.to_pil_image(img), img_info)
+            img = self.pil2tensor(image)
+            break
+        return img
 
 
 MODELS_DIR = os.path.join(folder_paths.models_dir, "MLLM")
@@ -401,11 +414,11 @@ class Step1XEditNode:
                 "num_steps": ("INT", {"default": 20, "min": 0, "max": 10000, "tooltip": "The number of diffusion steps."}),
                 "step1x_edit_model":(folder_paths.get_filename_list("Step1x-Edit"),),
                 "step1x_edit_model_vae": (folder_paths.get_filename_list("Step1x-Edit"),),
-                "mllm_model": (folder_paths.get_filename_list("MLLM"),),
+                "mllm_model": (os.listdir(folder_paths.get_folder_paths("MLLM")[0]),),
             }
         }
     
-    RETURN_TYPES = ("IMAGE")
+    RETURN_TYPES = ("IMAGE",)
     FUNCTION = "Step1XEdit"
 
     @torch.inference_mode()
@@ -427,6 +440,6 @@ class Step1XEditNode:
             seed=seed,
             show_progress=True,
             size_level=size_level,
-        )[0] # This is a PIL Image, but you need a resized tensor as an output. Can we optimize function? Absolutely yes but not now.
+        ) # This is a PIL Image, but you need a resized tensor as an output. Can we optimize function? Absolutely yes but not now.
         
-        return image;
+        return (image, );
