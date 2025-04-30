@@ -20,6 +20,8 @@ cd ComfyUI-Step1X-Edit
 pip install -r requirements.txt
 ```
 
+Please noted this project requires [flash attention](https://github.com/Dao-AILab/flash-attention), but build it using pip consumes lots of time. Try to build it manually or use prebuilt wheel according to [original guideline](https://github.com/stepfun-ai/Step1X-Edit/). If you have problem building it, I suggest you to install torch<=2.6 and use the prebuilt wheel. 
+
 ### Or Install via ComfyUI Manager
 
 ## Usage
