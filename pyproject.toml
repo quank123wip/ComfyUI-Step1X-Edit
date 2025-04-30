@@ -1,9 +1,10 @@
 [project]
-name = "ComfyUI-Step1X-Edit"
-description = "ComfyUI Custom Node for Step1X-Edit."
+name = "step1x-edit"
+description = "ComfyUI Custom Node for [a/Step1X-Edit](https://github.com/stepfun-ai/Step1X-Edit/). Noted this node may consume large VRAMs!"
 version = "1.0.0"
 license = {file = "LICENSE"}
-dependencies = ["torch>=2.3.1","liger_kernel==0.5.4","einops==0.8.1","transformers==4.49.0","qwen_vl_utils==0.0.10","safetensors==0.4.5","pillow==11.1.0"]
+dependencies = ["torch>=2.3.1", "liger_kernel==0.5.4", "einops==0.8.1", "transformers==4.49.0", "qwen_vl_utils==0.0.10", "safetensors==0.4.5", "pillow==11.1.0"]
+
 
 [project.urls]
 Repository = "https://github.com/quank123wip/ComfyUI-Step1X-Edit"
@@ -12,3 +13,4 @@ Repository = "https://github.com/quank123wip/ComfyUI-Step1X-Edit"
 [tool.comfy]
 PublisherId = "quank123wip"
 DisplayName = "ComfyUI-Step1X-Edit"
+Icon = ""
