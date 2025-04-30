@@ -27,6 +27,10 @@ import folder_paths
 
 # Derived from Step1X official inference code
 
+def cudagc():
+    torch.cuda.empty_cache()
+    torch.cuda.ipc_collect()
+
 def load_state_dict(model, ckpt_path, device="cuda", strict=False, assign=True):
     if Path(ckpt_path).suffix == ".safetensors":
         state_dict = load_file(os.path.join(folder_paths.models_dir, 'Step1x-Edit', ckpt_path), device)
@@ -91,16 +95,14 @@ def load_models(
         )
         dit = Step1XEdit(step1x_params)
 
-    ae = load_state_dict(ae, ae_path)
+    ae = load_state_dict(ae, ae_path, 'cpu')
     dit = load_state_dict(
-        dit, dit_path
+        dit, dit_path, 'cpu'
     )
 
-    dit = dit.to(device=device, dtype=dtype)
-    ae = ae.to(device=device, dtype=torch.float32)
+    ae = ae.to(dtype=torch.float32)
 
     return ae, dit, qwen2vl_encoder
-
 class ImageGenerator:
     def __init__(
         self,
@@ -110,6 +112,8 @@ class ImageGenerator:
         device="cuda",
         max_length=640,
         dtype=torch.bfloat16,
+        offload=False,
+        quantized=False,
     ) -> None:
         self.device = torch.device(device)
         self.ae, self.dit, self.llm_encoder = load_models(
@@ -119,6 +123,13 @@ class ImageGenerator:
             max_length=max_length,
             dtype=dtype,
         )
+        if not quantized:
+            self.dit = self.dit.to(dtype=torch.bfloat16)
+        if not offload:
+            self.dit = self.dit.to(device=self.device)
+            self.ae = self.ae.to(device=self.device)
+        self.quantized = quantized 
+        self.offload = offload
 
     def prepare(self, prompt, img, ref_image, ref_image_raw):
         bs, _, h, w = img.shape
@@ -151,8 +162,12 @@ class ImageGenerator:
 
         if isinstance(prompt, str):
             prompt = [prompt]
-
+        if self.offload:
+            self.llm_encoder = self.llm_encoder.to(self.device)
         txt, mask = self.llm_encoder(prompt, ref_image_raw)
+        if self.offload:
+            self.llm_encoder = self.llm_encoder.cpu()
+            cudagc()
 
         txt_ids = torch.zeros(bs, txt.shape[1], 3)
 
@@ -191,6 +206,8 @@ class ImageGenerator:
         show_progress=False,
         timesteps_truncate=1.0,
     ):
+        if self.offload:
+            self.dit = self.dit.to(self.device)
         if show_progress:
             pbar = tqdm(itertools.pairwise(timesteps), desc='denoising...')
         else:
@@ -235,6 +252,10 @@ class ImageGenerator:
                 img[ : img.shape[0] // 2, img_input_length:],
                 ], dim=1
             )
+
+        if self.offload:
+            self.dit = self.dit.cpu()
+            cudagc()
 
         return img[:, :img.shape[1] // 2]
 
@@ -324,7 +345,12 @@ class ImageGenerator:
 
         ref_images_raw = self.load_image(ref_images_raw)
         ref_images_raw = ref_images_raw.to(self.device)
+        if self.offload:
+            self.ae = self.ae.to(self.device)
         ref_images = self.ae.encode(ref_images_raw.to(self.device) * 2 - 1)
+        if self.offload:
+            self.ae = self.ae.cpu()
+            cudagc()
 
         seed = int(seed)
         seed = torch.Generator(device="cpu").seed() if seed < 0 else seed
@@ -335,7 +361,12 @@ class ImageGenerator:
             init_image = self.load_image(init_image)
             init_image = init_image.to(self.device)
             init_image = torch.nn.functional.interpolate(init_image, (height, width))
+            if self.offload:
+                self.ae = self.ae.to(self.device)
             init_image = self.ae.encode(init_image.to() * 2 - 1)
+            if self.offload:
+                self.ae = self.ae.cpu()
+                cudagc()
         
         x = torch.randn(
             num_samples,
@@ -361,17 +392,21 @@ class ImageGenerator:
         ref_images = torch.cat([ref_images, ref_images], dim=0)
         ref_images_raw = torch.cat([ref_images_raw, ref_images_raw], dim=0)
         inputs = self.prepare([prompt, negative_prompt], x, ref_image=ref_images, ref_image_raw=ref_images_raw)
-
-        x = self.denoise(
-            **inputs,
-            cfg_guidance=cfg_guidance,
-            timesteps=timesteps,
-            show_progress=show_progress,
-            timesteps_truncate=1.0,
-        )
-        x = self.unpack(x.float(), height, width)
         with torch.autocast(device_type=self.device.type, dtype=torch.bfloat16):
+            x = self.denoise(
+                **inputs,
+                cfg_guidance=cfg_guidance,
+                timesteps=timesteps,
+                show_progress=show_progress,
+                timesteps_truncate=1.0,
+            )
+            x = self.unpack(x.float(), height, width)
+            if self.offload:
+                self.ae = self.ae.to(self.device)
             x = self.ae.decode(x)
+            if self.offload:
+                self.ae = self.ae.cpu()
+                cudagc()
             x = x.clamp(-1, 1)
             x = x.mul(0.5).add(0.5)
 
@@ -415,6 +450,8 @@ class Step1XEditNode:
                 "step1x_edit_model":(folder_paths.get_filename_list("Step1x-Edit"),),
                 "step1x_edit_model_vae": (folder_paths.get_filename_list("Step1x-Edit"),),
                 "mllm_model": (os.listdir(folder_paths.get_folder_paths("MLLM")[0]),),
+                "offload": ("BOOLEAN", {"default": False, "tooltip": "Enable offloading the model to CPU."}),
+                "quantized": ("BOOLEAN", {"default": False, "tooltip": "Enable quantization of the dit."}),
             }
         }
     
@@ -422,12 +459,14 @@ class Step1XEditNode:
     FUNCTION = "Step1XEdit"
 
     @torch.inference_mode()
-    def Step1XEdit(self, image, prompt, seed, cfg, size_level, num_steps, step1x_edit_model, step1x_edit_model_vae, mllm_model):
+    def Step1XEdit(self, image, prompt, seed, cfg, size_level, num_steps, step1x_edit_model, step1x_edit_model_vae, mllm_model, offload, quantized):
         image_edit = ImageGenerator(
             ae_path=step1x_edit_model_vae,
             dit_path=step1x_edit_model,
             qwen2vl_model_path=os.path.join(folder_paths.get_folder_paths("MLLM")[0], mllm_model),
             max_length=640,
+            offload=offload,
+            quantized=quantized
         )
         
         image = image_edit.generate_image(
