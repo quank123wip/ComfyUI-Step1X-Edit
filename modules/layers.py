@@ -24,7 +24,7 @@ from functools import partial
 import torch
 import torch.nn.functional as F
 from einops import rearrange
-from liger_kernel.ops.rms_norm import LigerRMSNormFunction
+# from liger_kernel.ops.rms_norm import LigerRMSNormFunction
 from torch import Tensor, nn
 
 
@@ -436,16 +436,16 @@ class RMSNorm(torch.nn.Module):
         super().__init__()
         self.scale = nn.Parameter(torch.ones(dim))
 
-    @staticmethod
-    def rms_norm_fast(x, weight, eps):
-        return LigerRMSNormFunction.apply(
-            x,
-            weight,
-            eps,
-            0.0,
-            "gemma",
-            True,
-        )
+    # @staticmethod
+    # def rms_norm_fast(x, weight, eps):
+    #     return LigerRMSNormFunction.apply(
+    #         x,
+    #         weight,
+    #         eps,
+    #         0.0,
+    #         "gemma",
+    #         True,
+    #     )
 
     @staticmethod
     def rms_norm(x, weight, eps):
@@ -455,7 +455,11 @@ class RMSNorm(torch.nn.Module):
         return (x * rrms).to(dtype=x_dtype) * weight
 
     def forward(self, x: Tensor):
-        return self.rms_norm_fast(x, self.scale, 1e-6)
+        # return self.rms_norm_fast(x, self.scale.to(x.dtype), 1e-6)
+        
+        # To my knowledge, windows does not support liger_kernel.
+        # So I delete it for windows users.
+        return self.rms_norm(x, self.scale.to(x.dtype), 1e-6)
 
 
 class QKNorm(torch.nn.Module):
